@@ -148,6 +148,16 @@ in
       description = "Anthropic model used for soft-conflict advisory.";
     };
 
+    softConflicts = mkOption {
+      type = types.bool;
+      default = false;
+      description = ''
+        Enable LLM-based soft-conflict advisory via the Anthropic API.
+        Requires ANTHROPIC_API_KEY to be set in environmentFile.
+        When false, no API key is needed and the check is skipped entirely.
+      '';
+    };
+
     logLevel = mkOption {
       type = types.enum [ "DEBUG" "INFO" "WARNING" "ERROR" "CRITICAL" ];
       default = "INFO";
@@ -239,6 +249,7 @@ in
         MIN_APPROVALS = toString cfg.minApprovals;
         BLOCK_ON_HARD_CONFLICTS = if cfg.blockOnHardConflicts then "true" else "false";
         PR_ON_HARD_CONFLICTS = if cfg.prOnHardConflicts then "true" else "false";
+        SOFT_CONFLICTS_ENABLED = if cfg.softConflicts then "true" else "false";
         LLM_MODEL = cfg.llmModel;
         LOG_LEVEL = cfg.logLevel;
       }
