@@ -130,4 +130,4 @@ class ModrinthClient:
 
     async def smoke_check(self) -> None:
         """Verify API connectivity at startup."""
-        await self._get("/")
+        await self._get("/tag/loader")
