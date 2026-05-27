@@ -6,7 +6,7 @@ import discord
 from discord import app_commands
 
 from ..db import get_pending_proposals, get_proposal, insert_proposal, transition_to_merging
-from ..git_ops import get_last_commit
+from ..git_ops import get_last_commit, get_remote_url, github_releases_url
 from ..modrinth import ModrinthClient
 from ..packwiz import (
     PackwizError,
@@ -174,6 +174,29 @@ def setup_pack_commands(
         else:
             await interaction.followup.send(
                 f"📦 Export at `{mrpack}` ({size / 1024 / 1024:.1f} MB — too large to upload)"
+            )
+
+    @pack_group.command(name="releases", description="Link to the pack's GitHub releases page")
+    async def releases(interaction: discord.Interaction) -> None:
+        raw_url = get_remote_url(pack_dir, remote)
+        if not raw_url:
+            await interaction.response.send_message(
+                f"❌ Could not read remote `{remote}` URL.", ephemeral=True
+            )
+            return
+
+        releases_url = github_releases_url(raw_url)
+        if releases_url:
+            embed = discord.Embed(
+                title="Pack Releases",
+                url=releases_url,
+                description=f"[View all releases on GitHub]({releases_url})",
+                color=discord.Color.blurple(),
+            )
+            await interaction.response.send_message(embed=embed)
+        else:
+            await interaction.response.send_message(
+                f"📦 Pack repository: <{raw_url}>\n(Not a GitHub remote — releases page unavailable.)"
             )
 
     @pack_group.command(name="pending", description="List pending proposals")

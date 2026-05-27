@@ -1,4 +1,5 @@
 import logging
+import re
 import subprocess
 from pathlib import Path
 
@@ -83,3 +84,20 @@ def create_pr_branch(
 
 def checkout_branch(pack_dir: Path, branch: str) -> None:
     _run(["git", "checkout", branch], cwd=pack_dir)
+
+
+def get_remote_url(pack_dir: Path, remote: str) -> str | None:
+    try:
+        result = _run(["git", "remote", "get-url", remote], cwd=pack_dir)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return None
+
+
+def github_releases_url(remote_url: str) -> str | None:
+    """Convert a git remote URL to a GitHub releases page URL, or None if not GitHub."""
+    match = re.search(r"github\.com[:/](.+?)/(.+?)(?:\.git)?$", remote_url.strip())
+    if not match:
+        return None
+    owner, repo = match.group(1), match.group(2)
+    return f"https://github.com/{owner}/{repo}/releases"
