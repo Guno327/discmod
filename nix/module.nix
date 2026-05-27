@@ -106,6 +106,12 @@ in
       description = "Git branch the bot commits to.";
     };
 
+    gitMainBranch = mkOption {
+      type = types.str;
+      default = "main";
+      description = "Branch that `discmod-release` merges into and tags.";
+    };
+
     botGitName = mkOption {
       type = types.str;
       default = "discmod-bot";
@@ -119,9 +125,9 @@ in
     };
 
     minApprovals = mkOption {
-      type = types.ints.positive;
+      type = types.ints.unsigned;
       default = 1;
-      description = "Number of distinct ✅ reactions (from non-proposers) required to merge.";
+      description = "Number of distinct ✅ reactions (from non-proposers) required to merge. Set to 0 to auto-merge on propose.";
     };
 
     blockOnHardConflicts = mkOption {
@@ -166,6 +172,18 @@ in
       example = "/etc/discmod/secrets.env";
     };
 
+    # ---------- release CLI ----------
+
+    enableReleaseCli = mkOption {
+      type = types.bool;
+      default = true;
+      description = ''
+        Add `discmod-release` (and `discmod`) to `environment.systemPackages`
+        so the release tool is available on the system PATH for any user.
+        Disable if you prefer to manage the package yourself.
+      '';
+    };
+
     # ---------- extra runtime packages ----------
 
     extraPackages = mkOption {
@@ -183,6 +201,8 @@ in
   };
 
   config = mkIf cfg.enable {
+    environment.systemPackages = lib.mkIf cfg.enableReleaseCli [ cfg.package ];
+
     users.users.${cfg.user} = {
       isSystemUser = true;
       group = cfg.group;
@@ -213,6 +233,7 @@ in
         MODRINTH_USER_AGENT = cfg.modrinthUserAgent;
         GIT_REMOTE = cfg.gitRemote;
         GIT_BRANCH = cfg.gitBranch;
+        GIT_MAIN_BRANCH = cfg.gitMainBranch;
         BOT_GIT_NAME = cfg.botGitName;
         BOT_GIT_EMAIL = cfg.botGitEmail;
         MIN_APPROVALS = toString cfg.minApprovals;

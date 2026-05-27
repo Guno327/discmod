@@ -92,6 +92,13 @@ async def main() -> None:
         llm_model=cfg.llm_model,
         soft_conflicts_enabled=cfg.soft_conflicts_enabled,
         conn=conn,
+        bot=bot,
+        min_approvals=cfg.min_approvals,
+        git_name=cfg.bot_git_name,
+        git_email=cfg.bot_git_email,
+        git_remote=cfg.git_remote,
+        git_branch=cfg.git_branch,
+        block_on_hard=cfg.block_on_hard_conflicts,
     )
     setup_pack_commands(
         tree, guild,

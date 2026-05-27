@@ -34,6 +34,63 @@ async def _post_result(
         logger.error("Failed to post merge result: %s", exc)
 
 
+async def run_merge(
+    bot: discord.Client,
+    conn: sqlite3.Connection,
+    pack_dir: Path,
+    modrinth: ModrinthClient,
+    git_name: str,
+    git_email: str,
+    remote: str,
+    branch: str,
+    block_on_hard: bool,
+    proposal: dict,
+    approver_name: str,
+    approver_id: int,
+) -> None:
+    """Execute the merge flow and post the result. Expects status already set to 'merging'."""
+    is_remove = proposal["mod_url"].startswith("REMOVE:")
+    try:
+        if is_remove:
+            sha = await execute_merge_remove(
+                proposal, approver_name, approver_id,
+                pack_dir, conn, git_name, git_email, remote, branch,
+            )
+            msg = f"✅ Removed **{proposal['slug']}** — commit `{sha[:8]}`"
+        else:
+            resolved, sha = await execute_merge_add(
+                proposal, approver_name, approver_id,
+                pack_dir, modrinth, conn,
+                git_name, git_email, remote, branch,
+                block_on_hard,
+            )
+            msg = (
+                f"✅ Added **{proposal['slug']}** `{resolved.version_number}` "
+                f"— commit `{sha[:8]}`"
+            )
+        await _post_result(bot, proposal, msg)
+
+    except MergeBlocked as exc:
+        update_proposal_status(conn, proposal["message_id"], "failed", error=str(exc))
+        await _post_result(
+            bot, proposal,
+            f"⛔ Merge blocked for **{proposal['slug']}**: {exc}"
+        )
+    except (MergeFailed, MergePushFailed) as exc:
+        update_proposal_status(conn, proposal["message_id"], "failed", error=str(exc))
+        await _post_result(
+            bot, proposal,
+            f"❌ Merge failed for **{proposal['slug']}**: {exc}"
+        )
+    except Exception as exc:
+        logger.error("Unexpected merge error for %s: %s", proposal["slug"], exc, exc_info=True)
+        update_proposal_status(conn, proposal["message_id"], "failed", error=str(exc))
+        await _post_result(
+            bot, proposal,
+            f"❌ Unexpected error merging **{proposal['slug']}**: {exc}"
+        )
+
+
 def setup_reaction_handler(
     bot: discord.Client,
     conn: sqlite3.Connection,
@@ -102,45 +159,8 @@ def setup_reaction_handler(
         if not transition_to_merging(conn, payload.message_id):
             return  # another handler beat us
 
-        is_remove = proposal["mod_url"].startswith("REMOVE:")
-
-        try:
-            if is_remove:
-                sha = await execute_merge_remove(
-                    proposal, user_name, payload.user_id,
-                    pack_dir, conn, git_name, git_email, remote, branch,
-                )
-                msg = f"✅ Removed **{proposal['slug']}** — commit `{sha[:8]}`"
-            else:
-                # Load soft conflicts from DB summary (they were stored at propose time)
-                resolved, sha = await execute_merge_add(
-                    proposal, user_name, payload.user_id,
-                    pack_dir, modrinth, conn,
-                    git_name, git_email, remote, branch,
-                    block_on_hard,
-                )
-                msg = (
-                    f"✅ Added **{proposal['slug']}** `{resolved.version_number}` "
-                    f"— commit `{sha[:8]}`"
-                )
-            await _post_result(bot, proposal, msg)
-
-        except MergeBlocked as exc:
-            update_proposal_status(conn, payload.message_id, "failed", error=str(exc))
-            await _post_result(
-                bot, proposal,
-                f"⛔ Merge blocked for **{proposal['slug']}**: {exc}"
-            )
-        except (MergeFailed, MergePushFailed) as exc:
-            update_proposal_status(conn, payload.message_id, "failed", error=str(exc))
-            await _post_result(
-                bot, proposal,
-                f"❌ Merge failed for **{proposal['slug']}**: {exc}"
-            )
-        except Exception as exc:
-            logger.error("Unexpected merge error for %s: %s", proposal["slug"], exc, exc_info=True)
-            update_proposal_status(conn, payload.message_id, "failed", error=str(exc))
-            await _post_result(
-                bot, proposal,
-                f"❌ Unexpected error merging **{proposal['slug']}**: {exc}"
-            )
+        await run_merge(
+            bot, conn, pack_dir, modrinth,
+            git_name, git_email, remote, branch, block_on_hard,
+            proposal, user_name, payload.user_id,
+        )

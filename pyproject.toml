@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 discmod = "discmod.main:run"
+discmod-release = "discmod.release:release"
 
 [project.optional-dependencies]
 dev = [

@@ -5,10 +5,9 @@ from pathlib import Path
 import discord
 from discord import app_commands
 
-from ..db import insert_proposal
+from ..db import insert_proposal, get_proposal, transition_to_merging
 from ..llm import soft_conflict_check
-from ..merge import MergeBlocked, MergeFailed, execute_merge_add
-from ..models import ConflictReport, PackMod, ResolvedVersion, SoftConflict
+from ..models import PackMod, ResolvedVersion, SoftConflict
 from ..modrinth import ModrinthClient, ModrinthError, NoCompatibleVersion, parse_slug
 from ..packwiz import read_current_pack, read_pack_config
 
@@ -30,6 +29,7 @@ def build_proposal_embed(
     hard: list[str],
     soft: list[SoftConflict],
     ai_summary: str,
+    auto_merge: bool = False,
 ) -> discord.Embed:
     title = project.get("title", resolved.project_id)
     slug = project.get("slug", "")
@@ -58,7 +58,8 @@ def build_proposal_embed(
             inline=False,
         )
 
-    embed.set_footer(text="React ✅ to approve, ❌ to reject")
+    footer = "Auto-merging (MIN_APPROVALS=0)…" if auto_merge else "React ✅ to approve, ❌ to reject"
+    embed.set_footer(text=footer)
     return embed
 
 
@@ -72,6 +73,13 @@ def setup_propose_command(
     llm_model: str,
     soft_conflicts_enabled: bool,
     conn: sqlite3.Connection,
+    bot: discord.Client | None = None,
+    min_approvals: int = 1,
+    git_name: str = "discmod-bot",
+    git_email: str = "discmod@localhost",
+    git_remote: str = "origin",
+    git_branch: str = "dev",
+    block_on_hard: bool = False,
 ) -> None:
 
     @tree.command(name="propose", description="Propose a mod for the pack", guild=guild)
@@ -127,11 +135,13 @@ def setup_propose_command(
         else:
             ai_summary, soft = "", []
 
-        embed = build_proposal_embed(project, resolved, interaction.user, hard, soft, ai_summary)
+        auto_merge = min_approvals == 0
+        embed = build_proposal_embed(project, resolved, interaction.user, hard, soft, ai_summary, auto_merge)
         msg = await interaction.followup.send(embed=embed, wait=True)
 
-        await msg.add_reaction("✅")
-        await msg.add_reaction("❌")
+        if not auto_merge:
+            await msg.add_reaction("✅")
+            await msg.add_reaction("❌")
 
         insert_proposal(
             conn,
@@ -145,3 +155,13 @@ def setup_propose_command(
             ai_summary=ai_summary,
         )
         logger.info("Proposal created: %s by %s (msg %d)", slug, interaction.user, msg.id)
+
+        if auto_merge:
+            from .reactions import run_merge
+            proposal = get_proposal(conn, msg.id)
+            if transition_to_merging(conn, msg.id):
+                await run_merge(
+                    bot, conn, pack_dir, modrinth,
+                    git_name, git_email, git_remote, git_branch, block_on_hard,
+                    proposal, str(interaction.user), interaction.user.id,
+                )

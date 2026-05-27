@@ -147,6 +147,51 @@ chown -R modpack: /opt/discmod /srv/modpack /var/lib/discmod
 
 ---
 
+## Publishing releases with `discmod-release`
+
+`discmod-release` is a standalone CLI tool (installed alongside the bot) that merges your dev branch into main, tags the commit with the pack version, exports a `.mrpack`, and publishes it as a GitHub release — no CI runner required.
+
+### Usage
+
+```bash
+export PACK_DIR=/srv/modpack
+export GITHUB_TOKEN=ghp_...   # needs repo scope
+discmod-release
+```
+
+It reads the release version from `version` in `pack.toml`. To cut a new release, bump that field on your dev branch, then run the command.
+
+### What it does
+
+1. Checks that the tag `v{version}` does not already exist on the remote (fails fast if it does)
+2. Fetches the remote, checks out `GIT_MAIN_BRANCH`, and merges `GIT_BRANCH` into it
+3. Tags the merge commit and pushes both the branch and tag
+4. Runs `packwiz modrinth export` to produce `{name}-{version}.mrpack`
+5. Creates a GitHub release for the tag and uploads the `.mrpack` as an asset
+
+### Environment variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `PACK_DIR` | yes | — | Path to the packwiz git repo |
+| `GITHUB_TOKEN` | yes | — | GitHub PAT with `repo` scope |
+| `GIT_REMOTE` | no | `origin` | Git remote name |
+| `GIT_BRANCH` | no | `dev` | Dev branch to merge from |
+| `GIT_MAIN_BRANCH` | no | `main` | Release branch to merge into |
+| `BOT_GIT_NAME` | no | `discmod-bot` | Git author name for the merge commit |
+| `BOT_GIT_EMAIL` | no | `discmod@localhost` | Git author email |
+
+### NixOS
+
+When the NixOS module is enabled with `enableReleaseCli = true` (the default), `discmod-release` is added to `environment.systemPackages` and is available to all users on the system. Set `GITHUB_TOKEN` in your shell before running:
+
+```bash
+export GITHUB_TOKEN=ghp_...
+discmod-release
+```
+
+---
+
 ## NixOS module
 
 A NixOS module and Nix package are provided via the flake at `github:guno327/discmod`.
@@ -240,9 +285,11 @@ by adding `GIT_SSH_COMMAND=ssh -i /var/lib/discmod/.ssh/deploy_key` to
 | `modrinthUserAgent` | string | *(required)* | |
 | `dbPath` | string\|null | `null` | Defaults to `packDir/../bot.db` |
 | `gitRemote` | string | `"origin"` | |
-| `gitBranch` | string | `"dev"` | |
+| `gitBranch` | string | `"dev"` | Dev branch the bot commits to |
+| `gitMainBranch` | string | `"main"` | Release branch `discmod-release` merges into |
 | `botGitName` / `botGitEmail` | string | `"discmod-bot"` / `"discmod@localhost"` | Git author identity |
-| `minApprovals` | int | `1` | |
+| `minApprovals` | int | `1` | `0` = auto-merge on propose |
+| `enableReleaseCli` | bool | `true` | Add `discmod-release` to `environment.systemPackages` |
 | `blockOnHardConflicts` | bool | `false` | |
 | `prOnHardConflicts` | bool | `true` | |
 | `llmModel` | string | `claude-haiku-4-5-20251001` | |
