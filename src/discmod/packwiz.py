@@ -27,7 +27,7 @@ def read_current_pack(pack_dir: Path) -> list[PackMod]:
     mods = []
     for path in mods_dir.glob("*.pw.toml"):
         data = tomllib.loads(path.read_text())
-        slug = path.stem
+        slug = path.name.removesuffix(".pw.toml")
         modrinth = data.get("update", {}).get("modrinth", {})
         mods.append(PackMod(
             slug=slug,

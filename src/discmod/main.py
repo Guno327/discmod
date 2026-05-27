@@ -111,6 +111,9 @@ async def main() -> None:
         git_email=cfg.bot_git_email,
         remote=cfg.git_remote,
         branch=cfg.git_branch,
+        bot=bot,
+        min_approvals=cfg.min_approvals,
+        block_on_hard=cfg.block_on_hard_conflicts,
     )
     setup_reaction_handler(
         bot, conn,

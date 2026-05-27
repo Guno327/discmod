@@ -1,10 +1,20 @@
+import subprocess
 import tomllib
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from discmod.models import PackConfig, ResolvedVersion, DependencyRef
-from discmod.packwiz import _side, read_pack_config, write_mod_entry
+from discmod.models import DependencyRef, PackConfig, ResolvedVersion
+from discmod.packwiz import (
+    PackwizError,
+    _side,
+    read_current_pack,
+    read_pack_config,
+    run_packwiz_export,
+    run_packwiz_refresh,
+    write_mod_entry,
+)
 
 SAMPLE_PACK_TOML = """
 name = "test-pack"
@@ -69,3 +79,97 @@ def test_write_mod_entry(tmp_path):
     assert data["download"]["hash-format"] == "sha512"
     assert data["update"]["modrinth"]["mod-id"] == "AANobbMI"
     assert data["update"]["modrinth"]["version"] == "xyz789"
+
+
+# --- read_current_pack ---
+
+_MOD_TOML = """
+name = "Sodium"
+filename = "sodium-1.0.jar"
+side = "client"
+
+[download]
+url = "https://example.com/sodium.jar"
+hash-format = "sha512"
+hash = "abc123"
+
+[update]
+[update.modrinth]
+mod-id = "AANobbMI"
+version = "xyz789"
+"""
+
+
+def test_read_current_pack_no_mods_dir(tmp_path):
+    assert read_current_pack(tmp_path) == []
+
+
+def test_read_current_pack_empty_mods_dir(tmp_path):
+    (tmp_path / "mods").mkdir()
+    assert read_current_pack(tmp_path) == []
+
+
+def test_read_current_pack_with_mod(tmp_path):
+    mods = tmp_path / "mods"
+    mods.mkdir()
+    (mods / "sodium.pw.toml").write_text(_MOD_TOML)
+    result = read_current_pack(tmp_path)
+    assert len(result) == 1
+    assert result[0].slug == "sodium"
+    assert result[0].project_id == "AANobbMI"
+    assert result[0].version_id == "xyz789"
+    assert result[0].title == "Sodium"
+
+
+def test_read_current_pack_multiple_mods(tmp_path):
+    mods = tmp_path / "mods"
+    mods.mkdir()
+    (mods / "sodium.pw.toml").write_text(_MOD_TOML)
+    (mods / "lithium.pw.toml").write_text(_MOD_TOML.replace("Sodium", "Lithium").replace("AANobbMI", "lithium-id"))
+    result = read_current_pack(tmp_path)
+    assert len(result) == 2
+    slugs = {m.slug for m in result}
+    assert slugs == {"sodium", "lithium"}
+
+
+# --- run_packwiz_refresh ---
+
+def test_run_packwiz_refresh_success(tmp_path):
+    with patch("subprocess.run", return_value=MagicMock(returncode=0)):
+        run_packwiz_refresh(tmp_path)  # must not raise
+
+
+def test_run_packwiz_refresh_failure(tmp_path):
+    with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="oops")):
+        with pytest.raises(PackwizError, match="packwiz refresh failed"):
+            run_packwiz_refresh(tmp_path)
+
+
+# --- run_packwiz_export ---
+
+def test_run_packwiz_export_with_explicit_output(tmp_path):
+    out = tmp_path / "pack.mrpack"
+    out.write_bytes(b"fake")
+    with patch("subprocess.run", return_value=MagicMock(returncode=0)):
+        result = run_packwiz_export(tmp_path, output_path=out)
+    assert result == out
+
+
+def test_run_packwiz_export_finds_mrpack(tmp_path):
+    mrpack = tmp_path / "pack-0.1.mrpack"
+    mrpack.write_bytes(b"fake")
+    with patch("subprocess.run", return_value=MagicMock(returncode=0)):
+        result = run_packwiz_export(tmp_path)
+    assert result == mrpack
+
+
+def test_run_packwiz_export_no_mrpack_raises(tmp_path):
+    with patch("subprocess.run", return_value=MagicMock(returncode=0)):
+        with pytest.raises(PackwizError, match="no .mrpack found"):
+            run_packwiz_export(tmp_path)
+
+
+def test_run_packwiz_export_failure(tmp_path):
+    with patch("subprocess.run", return_value=MagicMock(returncode=1, stderr="export failed")):
+        with pytest.raises(PackwizError, match="packwiz modrinth export failed"):
+            run_packwiz_export(tmp_path)

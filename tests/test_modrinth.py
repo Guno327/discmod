@@ -328,6 +328,31 @@ async def test_raises_on_404():
 
 
 @pytest.mark.asyncio
+async def test_close():
+    c = ModrinthClient("test/test/0.0 (test@example.com)")
+    await c.close()  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_warning_when_remaining_low():
+    """Line 47: log warning and sleep when X-Ratelimit-Remaining < 10."""
+    project = load("sodium_project.json")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=project, headers={"X-Ratelimit-Remaining": "5"})
+
+    c = ModrinthClient("test/test/0.0 (test@example.com)")
+    c._client = httpx.AsyncClient(
+        base_url="https://api.modrinth.com/v2",
+        transport=httpx.MockTransport(handler),
+    )
+    with patch("discmod.modrinth.asyncio.sleep", new=AsyncMock()) as mock_sleep:
+        result = await c.fetch_project("sodium")
+    assert result["slug"] == "sodium"
+    mock_sleep.assert_called_once_with(2)
+
+
+@pytest.mark.asyncio
 async def test_429_retries_then_succeeds():
     project = load("sodium_project.json")
     # First response is 429 with Retry-After header, second succeeds.

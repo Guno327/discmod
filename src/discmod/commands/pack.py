@@ -5,7 +5,7 @@ from pathlib import Path
 import discord
 from discord import app_commands
 
-from ..db import get_pending_proposals, insert_proposal
+from ..db import get_pending_proposals, get_proposal, insert_proposal, transition_to_merging
 from ..git_ops import get_last_commit
 from ..modrinth import ModrinthClient
 from ..packwiz import (
@@ -42,6 +42,9 @@ def setup_pack_commands(
     git_email: str,
     remote: str,
     branch: str,
+    bot: discord.Client | None = None,
+    min_approvals: int = 1,
+    block_on_hard: bool = False,
 ) -> None:
     pack_group = app_commands.Group(name="pack", description="Pack management", guild_ids=[guild.id])
 
@@ -109,10 +112,14 @@ def setup_pack_commands(
             color=discord.Color.orange(),
         )
         embed.add_field(name="Proposed by", value=interaction.user.mention, inline=True)
-        embed.set_footer(text="React ✅ to approve, ❌ to reject")
+
+        auto_merge = min_approvals == 0
+        embed.set_footer(text="Auto-merging (MIN_APPROVALS=0)…" if auto_merge else "React ✅ to approve, ❌ to reject")
         msg = await interaction.followup.send(embed=embed, wait=True)
-        await msg.add_reaction("✅")
-        await msg.add_reaction("❌")
+
+        if not auto_merge:
+            await msg.add_reaction("✅")
+            await msg.add_reaction("❌")
 
         insert_proposal(
             conn,
@@ -125,6 +132,16 @@ def setup_pack_commands(
             proposer_name=str(interaction.user),
         )
         logger.info("Removal proposal: %s by %s (msg %d)", slug, interaction.user, msg.id)
+
+        if auto_merge:
+            from .reactions import run_merge
+            proposal = get_proposal(conn, msg.id)
+            if transition_to_merging(conn, msg.id):
+                await run_merge(
+                    bot, conn, pack_dir, modrinth,
+                    git_name, git_email, remote, branch, block_on_hard,
+                    proposal, str(interaction.user), interaction.user.id,
+                )
 
     @pack_group.command(name="rebuild", description="Run packwiz refresh and commit if changed (admin)")
     async def rebuild(interaction: discord.Interaction) -> None:

@@ -92,3 +92,25 @@ def test_reverse_no_conflict():
     existing = make_resolved("old-mod", [("other-mod", "incompatible")])
     issues = check_reverse_conflicts(new_resolved, [existing])
     assert issues == []
+
+
+@pytest.mark.asyncio
+async def test_dep_with_none_project_id_is_skipped():
+    # A dep where project_id is None must not cause a KeyError or false conflict.
+    resolved = make_resolved("new-mod", [])
+    dep_none = DependencyRef(project_id=None, version_id="some-vid", dependency_type="required")
+    resolved_with_none = ResolvedVersion(
+        project_id="new-mod",
+        version_id="v1",
+        version_number="1.0.0",
+        filename="new-mod.jar",
+        download_url="https://example.com/new-mod.jar",
+        sha512="a" * 128,
+        sha1="b" * 40,
+        file_size=1000,
+        dependencies=(dep_none,),
+        client_side="optional",
+        server_side="optional",
+    )
+    issues = await check_hard_conflicts(resolved_with_none, [])
+    assert issues == []
