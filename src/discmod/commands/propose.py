@@ -83,8 +83,8 @@ def setup_propose_command(
 ) -> None:
 
     @tree.command(name="propose", description="Propose a mod for the pack", guild=guild)
-    @app_commands.describe(modrinth_url="Modrinth mod URL or slug")
-    async def propose(interaction: discord.Interaction, modrinth_url: str) -> None:
+    @app_commands.describe(slug="Modrinth mod slug or URL")
+    async def propose(interaction: discord.Interaction, slug: str) -> None:
         if interaction.channel_id != proposal_channel_id:
             await interaction.response.send_message(
                 f"Proposals must be made in <#{proposal_channel_id}>.", ephemeral=True
@@ -94,7 +94,7 @@ def setup_propose_command(
         await interaction.response.defer(thinking=True)
 
         try:
-            slug = parse_slug(modrinth_url)
+            slug = parse_slug(slug)
         except ModrinthError as exc:
             await interaction.followup.send(f"❌ {exc}", ephemeral=True)
             return
@@ -147,7 +147,7 @@ def setup_propose_command(
             conn,
             message_id=msg.id,
             channel_id=interaction.channel_id,
-            mod_url=modrinth_url,
+            mod_url=slug,
             slug=slug,
             project_id=resolved.project_id,
             proposer_id=interaction.user.id,

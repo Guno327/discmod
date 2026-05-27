@@ -12,14 +12,10 @@ from ..packwiz import (
     PackwizError,
     read_current_pack,
     read_pack_config,
-    run_packwiz_export,
     run_packwiz_refresh,
 )
 
 logger = logging.getLogger(__name__)
-
-MAX_EMBED_FIELD = 1024
-MAX_DISCORD_FILE = 25 * 1024 * 1024  # 25 MB
 
 
 def _is_admin(interaction: discord.Interaction, admin_role_id: int | None) -> bool:
@@ -155,26 +151,6 @@ def setup_pack_commands(
             await interaction.followup.send(f"❌ {exc}", ephemeral=True)
             return
         await interaction.followup.send("✅ packwiz refresh complete.")
-
-    @pack_group.command(name="export", description="Export pack as .mrpack")
-    async def export_pack(interaction: discord.Interaction) -> None:
-        await interaction.response.defer(thinking=True)
-        try:
-            mrpack = run_packwiz_export(pack_dir)
-        except PackwizError as exc:
-            await interaction.followup.send(f"❌ {exc}", ephemeral=True)
-            return
-
-        size = mrpack.stat().st_size
-        if size <= MAX_DISCORD_FILE:
-            await interaction.followup.send(
-                "📦 Pack export:",
-                file=discord.File(str(mrpack)),
-            )
-        else:
-            await interaction.followup.send(
-                f"📦 Export at `{mrpack}` ({size / 1024 / 1024:.1f} MB — too large to upload)"
-            )
 
     @pack_group.command(name="releases", description="Link to the pack's GitHub releases page")
     async def releases(interaction: discord.Interaction) -> None:
