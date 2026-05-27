@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import shutil
 import subprocess
 import sys
 
@@ -45,11 +46,11 @@ async def main() -> None:
     logger.info("Pack: MC %s / %s %s", pack.mc_version, pack.loader, pack.loader_version or "")
 
     # Verify packwiz binary
-    result = subprocess.run(["packwiz", "--version"], capture_output=True, text=True)
-    if result.returncode != 0:
+    if not shutil.which("packwiz"):
         logger.error("packwiz not found on PATH")
         sys.exit(1)
-    logger.info("packwiz: %s", result.stdout.strip())
+    result = subprocess.run(["packwiz", "version"], capture_output=True, text=True)
+    logger.info("packwiz: %s", (result.stdout or result.stderr).strip())
 
     # Git pull
     pull_ff(cfg.pack_dir, cfg.git_remote, cfg.git_branch)
