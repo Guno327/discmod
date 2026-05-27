@@ -83,7 +83,7 @@ in
       default = null;
       description = ''
         Path to the SQLite database file.
-        Defaults to ''${packDir}/../bot.db'' when null.
+        Defaults to <packDir>/../bot.db when null.
       '';
       example = "/var/lib/discmod/bot.db";
     };
