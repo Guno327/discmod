@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "discmod"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "discord.py>=2.4",
+    "httpx>=0.27",
+    "tomli_w>=1.0",
+    "anthropic>=0.28",
+]
+
+[project.scripts]
+discmod = "discmod.main:run"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

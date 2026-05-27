@@ -1,0 +1,16 @@
+[Unit]
+Description=Collaborative Modpack Bot (discmod)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=modpack
+WorkingDirectory=/opt/discmod
+EnvironmentFile=/etc/discmod/env
+ExecStart=/opt/discmod/.venv/bin/python -m discmod.main
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
