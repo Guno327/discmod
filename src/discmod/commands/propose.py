@@ -70,6 +70,7 @@ def setup_propose_command(
     modrinth: ModrinthClient,
     llm_client,
     llm_model: str,
+    soft_conflicts_enabled: bool,
     conn: sqlite3.Connection,
 ) -> None:
 
@@ -121,7 +122,10 @@ def setup_propose_command(
             version_number=resolved.version_number,
         )
 
-        ai_summary, soft = await soft_conflict_check(new_mod, current, llm_client, llm_model)
+        if soft_conflicts_enabled:
+            ai_summary, soft = await soft_conflict_check(new_mod, current, llm_client, llm_model)
+        else:
+            ai_summary, soft = "", []
 
         embed = build_proposal_embed(project, resolved, interaction.user, hard, soft, ai_summary)
         msg = await interaction.followup.send(embed=embed, wait=True)

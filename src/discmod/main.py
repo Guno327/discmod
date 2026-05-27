@@ -68,8 +68,12 @@ async def main() -> None:
     await modrinth.smoke_check()
     logger.info("Modrinth API reachable")
 
-    # Anthropic client
-    llm_client = anthropic.AsyncAnthropic(api_key=cfg.anthropic_api_key)
+    # Anthropic client (only when soft conflict checking is enabled)
+    llm_client = (
+        anthropic.AsyncAnthropic(api_key=cfg.anthropic_api_key)
+        if cfg.soft_conflicts_enabled
+        else None
+    )
 
     # Discord bot
     intents = discord.Intents.default()
@@ -86,6 +90,7 @@ async def main() -> None:
         modrinth=modrinth,
         llm_client=llm_client,
         llm_model=cfg.llm_model,
+        soft_conflicts_enabled=cfg.soft_conflicts_enabled,
         conn=conn,
     )
     setup_pack_commands(

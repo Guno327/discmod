@@ -5,7 +5,10 @@
       "WebFetch(domain:files.pythonhosted.org)",
       "WebFetch(domain:pypi.org)",
       "Bash(nix flake *)",
-      "Bash(nix eval *)"
+      "Bash(nix eval *)",
+      "Bash(.venv/bin/pytest tests/ -q)",
+      "Bash(/home/ubuntu/discmod/.venv/bin/python3.12 -m pytest /home/ubuntu/discmod/tests/ -q)",
+      "Bash(/home/ubuntu/discmod/.venv/bin/python3.12 *)"
     ]
   },
   "sandbox": {
