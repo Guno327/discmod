@@ -63,8 +63,8 @@ All config via environment variables loaded at startup. Fail fast if any require
 | `DB_PATH` | no | Default: `${PACK_DIR}/../bot.db` |
 | `GIT_REMOTE` | no | Default: `origin` |
 | `GIT_BRANCH` | no | Default: `dev` |
-| `BOT_GIT_NAME` | no | Default: `dicmod-bot` |
-| `BOT_GIT_EMAIL` | no | Default: `dicmod@localhost` |
+| `BOT_GIT_NAME` | no | Default: `discmod-bot` |
+| `BOT_GIT_EMAIL` | no | Default: `discmod@localhost` |
 | `MIN_APPROVALS` | no | Default: `1` (distinct ✅ reactions from non-proposers) |
 | `BLOCK_ON_HARD_CONFLICTS` | no | Default: `false` |
 | `PR_ON_HARD_CONFLICTS` | no | Default: `true`
@@ -75,12 +75,12 @@ All config via environment variables loaded at startup. Fail fast if any require
 The bot's own source code, kept separate from the packwiz repo:
 
 ```
-dicmod/
+discmod/
 ├── pyproject.toml
 ├── README.md
 ├── .env.example
 ├── src/
-│   └── dicmod/
+│   └── discmod/
 │       ├── __init__.py
 │       ├── main.py             # entrypoint, bot setup, slash commands
 │       ├── config.py           # env loading, validation
@@ -614,9 +614,9 @@ After=network-online.target
 [Service]
 Type=simple
 User=modpack
-WorkingDirectory=/opt/dicmod
-EnvironmentFile=/etc/dicmod/env
-ExecStart=/opt/dicmod/.venv/bin/python -m dicmod.main
+WorkingDirectory=/opt/discmod
+EnvironmentFile=/etc/discmod/env
+ExecStart=/opt/discmod/.venv/bin/python -m discmod.main
 Restart=on-failure
 RestartSec=10s
 
@@ -626,10 +626,10 @@ WantedBy=multi-user.target
 
 Filesystem layout on host:
 ```
-/opt/dicmod/               # bot source + venv
+/opt/discmod/               # bot source + venv
 /srv/modpack/              # packwiz git repo (PACK_DIR)
-/var/lib/dicmod/           # bot.db
-/etc/dicmod/env            # env file, 0600, owned by modpack user
+/var/lib/discmod/           # bot.db
+/etc/discmod/env            # env file, 0600, owned by modpack user
 ```
 
 ## 17. Build Order for Implementation

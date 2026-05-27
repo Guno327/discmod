@@ -1,4 +1,4 @@
-# dicmod
+# discmod
 
 A Discord bot for collaboratively curating a Minecraft modpack via Modrinth. Mods are proposed with a slash command, approved by reaction, then automatically resolved and committed to a [packwiz](https://packwiz.infra.link/) git repository.
 
@@ -34,8 +34,8 @@ When inviting the bot, grant the following:
 ## Installation
 
 ```bash
-git clone <repo-url> /opt/dicmod
-cd /opt/dicmod
+git clone <repo-url> /opt/discmod
+cd /opt/discmod
 python3 -m venv .venv
 .venv/bin/pip install -e .
 ```
@@ -47,8 +47,8 @@ python3 -m venv .venv
 All configuration is via environment variables. Copy `.env.example` to get started:
 
 ```bash
-cp .env.example /etc/dicmod/env
-chmod 600 /etc/dicmod/env
+cp .env.example /etc/discmod/env
+chmod 600 /etc/discmod/env
 ```
 
 ### Required
@@ -69,8 +69,8 @@ chmod 600 /etc/dicmod/env
 | `DB_PATH` | `${PACK_DIR}/../bot.db` | Path to the SQLite database |
 | `GIT_REMOTE` | `origin` | Git remote to push commits to |
 | `GIT_BRANCH` | `dev` | Branch to commit and push to |
-| `BOT_GIT_NAME` | `dicmod-bot` | Author name used in pack commits |
-| `BOT_GIT_EMAIL` | `dicmod@localhost` | Author email used in pack commits |
+| `BOT_GIT_NAME` | `discmod-bot` | Author name used in pack commits |
+| `BOT_GIT_EMAIL` | `discmod@localhost` | Author email used in pack commits |
 | `MIN_APPROVALS` | `1` | Number of distinct non-proposer `✅` reactions required to merge |
 | `BLOCK_ON_HARD_CONFLICTS` | `false` | If `true`, merges are blocked when hard conflicts are detected |
 | `PR_ON_HARD_CONFLICTS` | `true` | If `true`, hard conflicts trigger a PR instead of a direct merge |
@@ -96,9 +96,9 @@ git push -u origin dev
 The bot needs push access. The recommended approach is an SSH deploy key:
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/dicmod_deploy -N ""
-# Add ~/.ssh/dicmod_deploy.pub as a deploy key on your remote
-export GIT_SSH_COMMAND="ssh -i ~/.ssh/dicmod_deploy"
+ssh-keygen -t ed25519 -f ~/.ssh/discmod_deploy -N ""
+# Add ~/.ssh/discmod_deploy.pub as a deploy key on your remote
+export GIT_SSH_COMMAND="ssh -i ~/.ssh/discmod_deploy"
 ```
 
 ---
@@ -108,27 +108,27 @@ export GIT_SSH_COMMAND="ssh -i ~/.ssh/dicmod_deploy"
 ### Directly
 
 ```bash
-cd /opt/dicmod
-source /etc/dicmod/env   # or set env vars however you prefer
-.venv/bin/python -m dicmod.main
+cd /opt/discmod
+source /etc/discmod/env   # or set env vars however you prefer
+.venv/bin/python -m discmod.main
 ```
 
 ### systemd (recommended)
 
-A service file is provided at `deploy/dicmod.service`. Install it:
+A service file is provided at `deploy/discmod.service`. Install it:
 
 ```bash
-cp deploy/dicmod.service /etc/systemd/system/dicmod.service
+cp deploy/discmod.service /etc/systemd/system/discmod.service
 systemctl daemon-reload
-systemctl enable --now dicmod
-journalctl -u dicmod -f   # follow logs
+systemctl enable --now discmod
+journalctl -u discmod -f   # follow logs
 ```
 
 The service runs as the `modpack` user. Create it if needed:
 
 ```bash
 useradd -r -s /usr/sbin/nologin modpack
-chown -R modpack: /opt/dicmod /srv/modpack /var/lib/dicmod
+chown -R modpack: /opt/discmod /srv/modpack /var/lib/discmod
 ```
 
 ---
@@ -149,7 +149,7 @@ chown -R modpack: /opt/dicmod /srv/modpack /var/lib/dicmod
 
 ## NixOS module
 
-A NixOS module and Nix package are provided via the flake at `github:guno327/dicmod`.
+A NixOS module and Nix package are provided via the flake at `github:guno327/discmod`.
 
 ### 1. Add the flake input and configure the service
 
@@ -158,22 +158,22 @@ A NixOS module and Nix package are provided via the flake at `github:guno327/dic
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    dicmod.url  = "github:guno327/dicmod";
+    discmod.url  = "github:guno327/discmod";
   };
 
-  outputs = { nixpkgs, dicmod, ... }: {
+  outputs = { nixpkgs, discmod, ... }: {
     nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
-        dicmod.nixosModules.default
+        discmod.nixosModules.default
         ./hardware-configuration.nix
 
         ({ pkgs, ... }: {
-          services.dicmod = {
+          services.discmod = {
             enable = true;
 
             # Non-secret config set directly in Nix.
-            modrinthUserAgent = "guno327/dicmod/0.1.0 (you@example.com)";
+            modrinthUserAgent = "guno327/discmod/0.1.0 (you@example.com)";
             extraPackages     = [ pkgs.packwiz ];
 
             # Discord IDs: not security-sensitive (any server member can see
@@ -184,7 +184,7 @@ A NixOS module and Nix package are provided via the flake at `github:guno327/dic
 
             # Path to a secrets file readable only by root / the service user.
             # Must define DISCORD_TOKEN and ANTHROPIC_API_KEY at minimum.
-            environmentFile = "/etc/dicmod/secrets.env";
+            environmentFile = "/etc/discmod/secrets.env";
           };
         })
       ];
@@ -196,9 +196,9 @@ A NixOS module and Nix package are provided via the flake at `github:guno327/dic
 ### 2. Create the secrets file
 
 ```bash
-install -m 0400 /dev/null /etc/dicmod/secrets.env
+install -m 0400 /dev/null /etc/discmod/secrets.env
 # then populate it:
-cat >> /etc/dicmod/secrets.env <<'EOF'
+cat >> /etc/discmod/secrets.env <<'EOF'
 DISCORD_TOKEN=your-bot-token-here
 ANTHROPIC_API_KEY=your-api-key-here
 # optionally, if you left the IDs out of the Nix config:
@@ -209,11 +209,11 @@ EOF
 
 ### 3. Set up the pack repository
 
-The module creates `/var/lib/dicmod/modpack` but does not initialise it.
-Run these once as the `dicmod` service user (or as root with `sudo -u dicmod`):
+The module creates `/var/lib/discmod/modpack` but does not initialise it.
+Run these once as the `discmod` service user (or as root with `sudo -u discmod`):
 
 ```bash
-cd /var/lib/dicmod/modpack
+cd /var/lib/discmod/modpack
 packwiz init          # follow prompts for MC version + loader
 git init
 git remote add origin <your-remote-url>
@@ -222,7 +222,7 @@ git push -u origin dev
 ```
 
 For push access, create an SSH deploy key and point the service at it
-by adding `GIT_SSH_COMMAND=ssh -i /var/lib/dicmod/.ssh/deploy_key` to
+by adding `GIT_SSH_COMMAND=ssh -i /var/lib/discmod/.ssh/deploy_key` to
 `environmentFile`, then install the public half as a deploy key on your remote.
 
 ### Module options reference
@@ -231,8 +231,8 @@ by adding `GIT_SSH_COMMAND=ssh -i /var/lib/dicmod/.ssh/deploy_key` to
 |---|---|---|---|
 | `enable` | bool | `false` | |
 | `package` | package | flake default | Override to pin a version |
-| `user` / `group` | string | `"dicmod"` | Service account created automatically |
-| `stateDir` | string | `/var/lib/dicmod` | Root of all bot state |
+| `user` / `group` | string | `"discmod"` | Service account created automatically |
+| `stateDir` | string | `/var/lib/discmod` | Root of all bot state |
 | `packDir` | string | `stateDir/modpack` | Path to the packwiz git repo |
 | `discordGuildId` | string\|null | `null` | Set here or in `environmentFile` |
 | `discordProposalChannelId` | string\|null | `null` | Set here or in `environmentFile` |
@@ -241,7 +241,7 @@ by adding `GIT_SSH_COMMAND=ssh -i /var/lib/dicmod/.ssh/deploy_key` to
 | `dbPath` | string\|null | `null` | Defaults to `packDir/../bot.db` |
 | `gitRemote` | string | `"origin"` | |
 | `gitBranch` | string | `"dev"` | |
-| `botGitName` / `botGitEmail` | string | `"dicmod-bot"` / `"dicmod@localhost"` | Git author identity |
+| `botGitName` / `botGitEmail` | string | `"discmod-bot"` / `"discmod@localhost"` | Git author identity |
 | `minApprovals` | int | `1` | |
 | `blockOnHardConflicts` | bool | `false` | |
 | `prOnHardConflicts` | bool | `true` | |
